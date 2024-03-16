@@ -1,0 +1,123 @@
+---
+title: "UHN ggplot workshop"
+subtitle: "test"
+author: "Michael Geuenich"
+institute: "Lunenfeld Tanenbaum Research Institute"
+date: "2016/12/12"
+output:
+  xaringan::moon_reader:
+    css: [default, metropolis, tamu-fonts]
+    lib_dir: libs
+    nature:
+      ratio: '16:10'
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+# Data types
+
+### Vectors: 
+- basic building blocks of R
+
+```
+test_vector <- c(1, 2, 3, 4, 5)
+test_character_vector <- c("a", "b", "c", "d", "e")
+```
+
+--
+
+### Lists: 
+- recursive vectors, a vector that can contain other vectors
+
+```
+test_list <- list(1, c(2, 3, 5), 3, 4, 5)
+```
+
+### Dataframes/tibbles
+- essentially tables
+
+```
+library(tibble)
+df <- tibble(x = 1:5,
+             y = c("a", "b", "c", "d", "e")
+)
+```
+---
+
+# Reading in data
+
+The `readr` R package is your friend here. Lots of functions that are useful:
+
+- `read_csv()`: comma separated files
+- `read_tsv()`: tab separated files
+- `read_xlsx()`: excel files, can specify what sheet to read in
+
+--
+Useful cheatsheet: [https://readr.tidyverse.org](https://readr.tidyverse.org)
+--
+
+
+## Cleaning up column names
+
+Column names of data that is read in is frequently messy, e.g. `age.at death` instead of `age_at_death`. The janitor R package can help with this. Install it using
+```
+install.packages("janitor")
+
+# then run the clean_names() function on your dataframe
+df <- clean_names(df)
+```
+- Check the janitor documentation for many other useful functions!
+---
+
+
+# Dealing with dates
+
+Dates are a common data type that can be a pain to work with as there are many formats. The `lubridate` package can help with this. Some functions to parse date-times:
+```{r warning=F}
+library(lubridate)
+date <- ymd(20221215)
+date
+```
+
+Extract the day (similar functions exist for year, month, hour, second, etc):
+```{r}
+day(date)
+```
+
+---
+
+# Dealing with dates (cont'd)
+To overwrite the date column in a dataframe with the formated date I can thus do:
+```{r}
+library(tibble)
+df <- tibble(date = c("20201215", "20201216"))
+df
+```
+--
+```{r}
+df$date <- ymd(df$date)
+df
+```
+
+---
+
+# Subsetting data 
+
+---
+
+# Long vs wide data format
+
+<img src="https://www.statology.org/wp-content/uploads/2021/12/wideLong1-1-768x543.png" width="706" height="500"
+style="display:block;margin-left:auto;margin-right:auto"/>
+
+Source: https://www.statology.org
+---
+
+# Pivot wider & pivot longer
+
+---
+
+# ggplot
+
+
