@@ -1,48 +1,63 @@
 ---
-title: "UHN ggplot workshop"
-subtitle: "test"
+title: "UHN plotting workshop"
+subtitle: "ggplot & the tidyverse"
 author: "Michael Geuenich"
 institute: "Lunenfeld Tanenbaum Research Institute"
-date: "2016/12/12"
+date: "2024/03/19"
 output:
   xaringan::moon_reader:
-    css: [default, metropolis, tamu-fonts]
+    css: [default, metropolis, tamu-fonts, custom.css]
     lib_dir: libs
     nature:
-      ratio: '16:10'
+      ratio: '17:10'
       highlightStyle: github
       highlightLines: true
       countIncrementalSlides: false
 ---
 
+# Workshop outline
+- Basic data types
+- Reading data into R
+- Subsetting and cleaning data with dplyr
+- Working with time
+- Palmer penguins
+- Plotting in base R
+- Why ggplot seems harder but is actually easier
+- ggplot details
+- Combining and saving plots
+
+---
 # Data types
 
-### Vectors: 
+.pull-left[
+## Vectors: 
 - basic building blocks of R
 
-```
+```{r}
 test_vector <- c(1, 2, 3, 4, 5)
-test_character_vector <- c("a", "b", "c", "d", "e")
+test_character_vector <- c("a", "b", "c", "d")
 ```
 
+- Vectors can also be named:
+```{r}
+names(test_vector) <- c("one", "two", "three", 
+                        "four", "five")
+test_vector
+```
+]
 --
-
-### Lists: 
-- recursive vectors, a vector that can contain other vectors
-
-```
-test_list <- list(1, c(2, 3, 5), 3, 4, 5)
-```
-
-### Dataframes/tibbles
+.pull-right[
+## Dataframes/tibbles:
 - essentially tables
 
-```
+```{r}
 library(tibble)
-df <- tibble(x = 1:5,
-             y = c("a", "b", "c", "d", "e")
-)
+df <- tibble(
+  x = 1:5, 
+  y = c("a", "b", "c", "d", "e"))
+df
 ```
+]
 ---
 
 # Reading in data
@@ -54,13 +69,14 @@ The `readr` R package is your friend here. Lots of functions that are useful:
 - `read_xlsx()`: excel files, can specify what sheet to read in
 
 --
+
 Useful cheatsheet: [https://readr.tidyverse.org](https://readr.tidyverse.org)
 --
 
 
 ## Cleaning up column names
 
-Column names of data that is read in is frequently messy, e.g. `age.at death` instead of `age_at_death`. The janitor R package can help with this. Install it using
+Column names can frequently be messy, e.g. `age.at death` instead of `age_at_death`. The janitor R package can help with this. Install it using
 ```
 install.packages("janitor")
 
@@ -70,10 +86,42 @@ df <- clean_names(df)
 - Check the janitor documentation for many other useful functions!
 ---
 
+# Subsetting & manipulating data 
 
+Subsetting data is a common task in R. The `dplyr` package can help with this. Some useful functions:
+- `filter()`: filter rows based on some condition
+- `select()`: select columns
+    - can be used with `starts_with()`, `ends_with()`, `contains()`, `matches()`, `one_of()`, `everything()`
+- `mutate()`: add new columns
+- `arrange()`: sort rows
+- `group_by()`: group by a variable (frequently followed by other functions like `summarize()` or `tally()`)
+
+--
+
+## Piping data
+.pull-left[
+I may want to apply multiple of these functions to the same data in succession.
+I could either do this in a nested fashion, but this is very hard to read:
+```
+mutate(filter(select(df, x, y), x > 2), z = x + y)
+```
+]
+--
+.pull-right[
+Alternatively, I can pipe the data using the `|>` operator (`command + shift + m` in RStudio):
+```
+df |> 
+  select(x, y) |> 
+  filter(x > 2) |> 
+  mutate(z = x + y)
+```
+]
+
+---
 # Dealing with dates
 
 Dates are a common data type that can be a pain to work with as there are many formats. The `lubridate` package can help with this. Some functions to parse date-times:
+.pull-left[
 ```{r warning=F}
 library(lubridate)
 date <- ymd(20221215)
@@ -85,27 +133,489 @@ Extract the day (similar functions exist for year, month, hour, second, etc):
 day(date)
 ```
 
----
-
-# Dealing with dates (cont'd)
+Extract the weekday:
+```{r}
+wday(date, label = TRUE)
+```
+]
+--
+.pull-right[
 To overwrite the date column in a dataframe with the formated date I can thus do:
 ```{r}
-library(tibble)
 df <- tibble(date = c("20201215", "20201216"))
-df
-```
---
-```{r}
 df$date <- ymd(df$date)
 df
 ```
+]
 
 ---
+# Excel time
+.pull-left[
+Time is stored as serial numbers. Time starts on January 0th 1900 at time 00:00:00 
+- To convert from excel time to a readable time use the `convertToDateTime()` function
+- remember to add the tz argument to specify the timezone
+```{r}
+time <- convertToDateTime(44239.5, 
+                          tz='Canada/Eastern')
+time
+```
 
-# Subsetting data 
+We can get the year, month, day using `as.Date()`
+```{r}
+as.Date(time)
+```
+]
+--
+.pull-right[
+We can calculate the time between two times by substracting one from the other
+```{r}
+time1 <- convertToDateTime(45336.5, 
+                           tz='Canada/Eastern')
+time2 <- convertToDateTime(44239.5, 
+                           tz='Canada/Eastern')
 
+time1 - time2
+```
+]
 ---
 
+# Sample dataset: palmer penguins
+
+.pull-left[
+
+Penguin data collected from the palmer station in Antarctica.
+
+```
+install.packages("palmerpenguins")
+```
+```{r echo=F}
+options(tibble.width = Inf)
+```
+```{r}
+library(palmerpenguins)
+head(penguins, n = 6)
+```
+]
+.pull-right[
+  <img src="images/lter_penguins.png" width="418" height="250" 
+  style="display:block;margin-left:auto;margin-right:auto"/>
+]
+---
+# Select
+.pull-left-small[
+  ## Select
+  ```{r message=FALSE}
+  library(dplyr)
+  select(penguins, species, island) |> 
+    head(n = 4)
+  ```
+]
+--
+.pull-right-big[
+  ## Using `starts_with()`
+  ```{r message=FALSE}
+  select(penguins, species, island, starts_with("bill")) |> 
+    head(n = 4)
+  ```
+
+Instead of `starts_with()` I could also use `ends_with()`, `contains()`, `matches()`, `one_of()`, `everything()`, etc.
+]
+---
+# Filter rows
+```{r message=FALSE}
+filter(penguins, island == "Torgersen") |> head(n = 4)
+```
+--
+.pull-left-55-inverse[
+Filtering out missing values (NA's)
+```{r}
+select(penguins, species, island, sex) |> 
+  filter(!is.na(sex)) |> head(n = 2)
+```
+]
+--
+.pull-right-55[
+Combining conditions with `&` (and) or `|` (or) is easy.
+```{r}
+select(penguins, species, island, sex) |> 
+  filter(island == "Torgersen" & !is.na(sex)) |> head(n = 2)
+```
+]
+---
+
+# Mutate: adding new columns or changing existing columns
+.pull-left-55-inverse[
+```{r message=FALSE}
+mutate(penguins, 
+       bill_length_log = log(bill_length_mm)) |> 
+  select(bill_length_mm, bill_length_log)
+```
+]
+--
+.pull-right-55[
+Let's impute those missing values in `bill_length_mm` with the mean value:
+```{r}
+mutate(penguins, bill_length_mm = 
+    case_when(
+      is.na(bill_length_mm) ~ mean(bill_length_mm, na.rm = TRUE),
+      TRUE ~ bill_length_mm
+)) |> select(bill_length_mm) |> head(n = 4)
+
+mean(penguins$bill_length_mm, na.rm = TRUE)
+```
+]
+---
+# Cleaning up messy data with mutate
+```{r echo=F}
+options(tibble.width = 40)
+crazy_df <- structure(list(accession = c("S24-1014", "S24-1020", "S24-1036", 
+"S24-1054", "S24-1062", "S24-1133"), diagnosis = c("1.  Duodenum, biopsy: duodenal mucosa shows reactive changes with overall preservation of normal villous architecture and no overt increase in intraepithelial lymphocytes.  \r\n  \r\n2.  Stomach, biopsy: body and antral type gastric mucosa show a mild chronic gastritis with focal (mild) intestinal metaplasia, very focal activity, no H. pylori. Negative for dysplasia.", 
+"1. Stomach (antrum), biopsy:\r\n-Antral mucosa with chronic active H. pylori gastritis\r\n-Positive for intestinal metaplasia\r\n-Negative for dysplasia or malignancy \r\n\r\n2. Colon (right/ascending), biopsy: \r\n-Colonic mucosa with a prominent lymphoid aggregate and focal active inflammaton\r\n-Negative for dysplasia or malignancy \r\n\r\n3. Stomach (body, fundus), biopsy: \r\n-Oxyntic mucosa with chronic active H. pylori gastritis\r\n-Negative for intestinal metaplasia, dysplasia, or malignancy", 
+"1. Skin, wide local excision, left shoulder:\r\n- In situ and invasive melanoma, nodular type with Spitzoid features, see comment. \r\n*Tumour thickness:               6 mm\r\n*Ulceration:                     Absent \r\n*Mitotic activity:                    4/mm2\r\n*Anatomical level:                Clark level IV\r\n*Regression:                     Identified, <75% \r\n*Tumour infiltrating lymphocytes:     Present, nonbrisk\r\n*Perineural invasion:                Not identified\r\n*Lymphovascular invasion:           Not identified\r\n*Microsatellitosis:                Not identified\r\n*Growth phase:                Vertical\r\n*Cell type:                     Epithelioid and spindled\r\n*Margins:                     Negative for melanoma\r\ni) In situ melanoma is 25 mm to closest peripheral margin (posterior margin) \r\nii) Invasive melanoma is 15 mm     to closest peripheral margin (posterior margin)\r\niii) Invasive melanoma is 4 mm to the deep margin  \r\n- Dermal scar and reparative changes.\r\n\r\n2. Excess skin, excision:\r\n- Negative for malignancy. \r\n\r\n3. Left axilla sentinel lymph node #1, excision (Melanoma sentinel lymph node protocol): \r\n- One lymph node positive for metastatic melanoma (1/1)\r\n*Number of metastatic deposits:          Single          \r\n*Size of largest metastatic deposit:     5.6 mm\r\n*Location:                    Subcapsular and parenchymal \r\n*Extranodal extension:                Not identified \r\n*Necrosis:                    Not identified\r\n*Immunohistochemistry:               S100+, melanoma cocktail+\r\n\r\n\r\n4. Left axilla sentinel lymph node #2, excision (Melanoma sentinel lymph node protocol): \r\n- Three of four lymph node positive for metastatic melanoma (3/4)\r\n*Number of metastatic deposits:          Single per involved lymph node          \r\n*Size of largest metastatic deposits:     6.6 mm, 5 mm, 2 mm\r\n*Location:                    Subcapsular and parenchymal \r\n*Extranodal extension:                Not identified \r\n*Necrosis:                    Not identified\r\n*Immunohistochemistry:               S100+, melanoma cocktail+", 
+"1. Soft tissue, left neck level III, excision:\r\n   - Fibroadipose tissue, negative for malignancy\r\n\r\n2. Lymph nodes, left level IIA/IIB, selective neck dissection:\r\n   - Eight lymph nodes, negative for malignancy (0/8)\r\n\r\n3. Lymph nodes, left level III, selective neck dissection:\r\n   - Four lymph nodes, negative for malignancy (0/4)\r\n\r\n4. Soft tissue, left facial nerve, biopsy:\r\n   - Nerve, negative for malignancy\r\n\r\n5-6. Parotid gland, left, parotidectomy:\r\n   - Mucoepidermoid carcinoma, low grade, 1.6 cm, see synoptic summary and comment\r\n   - Seven lymph nodes, negative for malignancy (0/7)", 
+"1. Skin (LEFT breast)\r\n- Unremarkable skin and underlying breast tissue.\r\n- No evidence of significant atypia or malignancy.\r\n\r\n2. Skin (Chest wall, laterality not provided)\r\n- Focal fibrosis consistent with scar.\r\n- No evidence of malignancy.", 
+"1.  Stomach, biopsy:\r\n- oxyntic mucosa with no significant abnormalities \r\n- negative for H. pylori\r\n- negative for intestinal metaplasia\r\n- negative for dysplasia\r\n \r\n2.  Esophagus (gastroesophageal junction), biopsy:\r\n- squamo- columnar mucosa with lymphoid aggregates\r\n- negative for intestinal metaplasia\r\n- negative for dysplasia and malignancy\r\n\r\nThese findings may not be representative of the lesion in question. Additional biopsies may be required if clinically warranted. This part has been seen in consensus with Dr. S N Kalimuthu, GI/Pancreas pathologist.\r\n \r\n3.  Esophagus, biopsy:\r\n- squamo- columnar mucosa with chronic inactive inflammation\r\n- negative for intestinal metaplasia\r\n- negative for dysplasia"
+), accession.date = c(45299.5768055556, 45299.5834375, 45299.6248842593, 
+45299.6488194444, 45299.6583912037, 45300.3236342593), signout.date = c(45302.3990509259, 
+45303.5831018519, 45308.5450925926, 45313.7157638889, 45310.4886111111, 
+45310.5372916667)), row.names = c(NA, 6L), class = "data.frame") |> as_tibble()
+```
+.pull-left-55-inverse[
+```{r}
+crazy_df
+```
+
+Introducing `grepl`: used for pattern matching
+```{r}
+grepl("Skin", crazy_df$diagnosis)
+```
+]
+--
+```{r echo=F}
+options(tibble.width = 55)
+```
+.pull-right-55[
+```{r}
+mutate(head(crazy_df, n = 3), 
+       organ = case_when(grepl("lymph.*biop", diagnosis) ~ "HP",
+                         grepl("Skin|nail", diagnosis) ~ "SK"))
+```
+
+```{r}
+mutate(crazy_df, across(ends_with("date"), ~ 
+    convertToDateTime(.x, tz='Canada/Eastern'))) |> 
+  select(-diagnosis) |> head(n = 2)
+```
+]
+---
+# Group by
+.pull-left[
+Say I want to know how many penguins of each species are on each island:
+```{r message=FALSE}
+penguins |> 
+  group_by(species, island) |> 
+  tally()
+```
+]
+--
+.pull-right[
+Or I want to know the average bill and flipper length of each species:
+```{r message=FALSE}
+penguins |> 
+  group_by(species) |> 
+  summarize(mean_bill_length = 
+              mean(bill_length_mm, na.rm = TRUE),
+            mean_flipper_length =
+              mean(flipper_length_mm, na.rm = TRUE))
+```
+]
+
+---
+# Exercise 1!
+Try answering some of the following questions?
+1. Do any of the islands have an imbalance in the number of male/female penguins?
+  - Calculate the number of male and female penguins on each island
+  - See if you can calculate the proportion of female penguins on each island
+2. What is the average body mass of each species?
+3. What is the average body mass of each species on each island?
+4. Impute the missing values for the `body_mass_g` column in a species and sex specific manner (you will need `group_by` and `mutate` for this)
+
+.pull-right[
+  <img src="images/lter_penguins.png"
+  style="display:block;margin-left:auto;margin-right:auto"/>
+]
+
+---
+# Plotting: base R vs ggplot
+.pull-left[
+```{r fig.height = 5}
+plot(x = penguins$bill_length_mm, 
+     y = penguins$bill_depth_mm, 
+     col = penguins$species)
+```
+]
+--
+.pull-right[
+```{r fig.height=4, warning=F}
+library(ggplot2)
+ggplot(penguins, 
+       aes(x = bill_length_mm, y = bill_depth_mm, 
+           color = species)) +
+  geom_point()
+```
+]
+---
+# Adding regression lines
+Let's say I want to add a regression line for each species to the plot. In base R I would do:
+```{r fig.height=5, fig.width=8, fig.align='center'}
+plot(x = penguins$bill_length_mm, y = penguins$bill_depth_mm, col = penguins$species)
+abline(lm(bill_depth_mm ~ bill_length_mm, data = penguins[penguins$species == "Adelie", ]), col = "red")
+abline(lm(bill_depth_mm ~ bill_length_mm, data = penguins[penguins$species == "Chinstrap", ]), col = "green")
+abline(lm(bill_depth_mm ~ bill_length_mm, data = penguins[penguins$species == "Gentoo", ]), col = "blue")
+```
+---
+# The benefit of ggplot
+.pull-left[
+Several issues with the base R approach:
+1. I need to manually add a line for each species
+2. I need to subset the penguins dataframe for each species (e.g. `penguins[penguins$species == "Gentoo", ]`)
+3. I need to manually make sure my colours match, notice the discrepancy in point and regression line colours
+4. I need to manually add a figure legend
+]
+--
+.pull-right[
+## Using ggplot
+```{r warning=F, message=F, fig.height=4}
+ggplot(penguins, 
+       aes(x = bill_length_mm, y = bill_depth_mm, 
+           color = species)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+]
+---
+# Some more advantages
+.pull-left-55-inverse[
+Lets say I actually wanted to know the difference in bill depth by species, I can modify our earlier code
+```
+ggplot(penguins, 
+  aes(x = bill_length_mm, y = bill_depth_mm,
+      color = species)) +
+  geom_point()
+```
+]
+--
+.pull-right-55[
+and set `x = species` and replace `geom_point()` with `geom_boxplot()`:
+```{r warning = F, fig.height = 4}
+ggplot(penguins, aes(x = species, y = bill_depth_mm)) +
+  geom_boxplot()
+```
+]
+--
+.pull-right-55[
+In base R I would have had to start over with `boxplot(bill_depth_mm ~ species, data = penguins)`
+]
+---
+# What is ggplot anyways?
+.pull-left-small[
+### *gg stands for Grammar of Graphics*
+- It is a way of thinking about how to build plots
+- The idea is that you can build up a plot in layers, adding points, lines, labels, etc. as you go
+- This makes it very easy to build complex plots.
+]
+--
+.pull-right-big[
+<img src="https://miro.medium.com/v2/resize:fit:720/format:webp/1*UNk936MYU2BiGWpf01Ovvw.png" width="700" height="318"
+style="display:block;margin-left:auto;margin-right:auto"/>
+]
+---
+# What is ggplot anyways?
+.pull-left[
+<img src="https://miro.medium.com/v2/resize:fit:720/format:webp/1*UNk936MYU2BiGWpf01Ovvw.png" width="700" height="318"
+style="display:block;margin-left:auto;margin-right:auto"/>
+]
+.pull-right[
+### Data
+- this is the data you want to plot
+
+### Aesthetics
+- this is how you want to map your data to the plot.
+  - what variable do you want on the x- or y-axis
+  - what variable do you want to use to colour the points, etc.
+
+### Geometries
+- this is the type of plot you want to make
+  - points, lines, bars, boxplot, etc.
+]
+---
+# Exercise 2!
+
+Try answering some of the following questions:
+1. What is the relationship between bill length and body mass?
+  - Try plotting a scatterplot of bill length vs body mass
+  - Try adding a regression line to the plot
+  - How does this relationship differ by species?
+2. Create a boxplot showing the difference in bill length by sex for each species (i.e. put species on the x-axis and bill length on the y-axis, and colour the plot by sex)
+3. Create a barplot showing the number of penguins on each island (you will need the `group_by` and `tally` functions for this)
+
+???
+penguins |> 
+  group_by(species) |>
+  tally() |> 
+  ggplot(aes(x = species, y = n)) +
+  geom_col()
+---
+# Making things pretty
+```
+p <- ggplot(penguins, aes(x = species, y = bill_length_mm, fill = sex)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Bill length by species", x = "Species", y = "Bill length (mm)", fill = "Sex (m/f)")
+  
+p
+```
+.pull-left-55-inverse[
+```{r warning = FALSE, fig.height = 5, fig.width=6, fig.align='left', echo=F}
+p <- ggplot(penguins, aes(x = species, y = bill_length_mm, fill = sex)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Bill length by species", x = "Species", y = "Bill length (mm)", fill = "Sex (m/f)")
+
+p
+```
+]
+.pull-right-55[.move-h2-up[
+## Themes
+- The default theme in ggplot has the grey background, there are many other options including `theme_minimal()`, `theme_bw()` etc. You can find a full list [here](https://ggplot2.tidyverse.org/reference/ggtheme.html) 
+- You can also modify individual elements of the plot using `theme()`, this function has 90+ arguments that allow you to override every aspect of the plot. E.g. the following will remove the x-ticks, angle the x-axis labels and move the legend to the bottom:
+```
+p + theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+      axis.ticks.x = element_blank(), 
+      legend.position = "bottom")
+```
+]
+]
+---
+# Changing colours
+I don't really like the colour palette in the previous plot. Let's manually change this, several ways of doing this:
+.one_third[
+Manually specifying the colours:
+```{r warning = FALSE, message = F, fig.width=4, fig.height=3}
+my_cols <- c("female" = "blue", 
+             "male" = "red")
+p + scale_fill_manual(
+  values = my_cols
+  )
+```
+]
+--
+.one_third[
+Using the `viridis` package:
+```{r warning = FALSE, fig.width=4, fig.height=3}
+library(viridis)
+p + scale_fill_viridis_d()
+```
+]
+--
+.one_third[
+Using the `RColorBrewer` package:
+```{r warning = FALSE, fig.width=4, fig.height=3}
+library(RColorBrewer)
+p + scale_fill_brewer(
+  palette = "Set3"
+  )
+```
+
+There are lots of palettes for RColorBrewer, see [here](https://r-graph-gallery.com/38-rcolorbrewers-palettes.html)
+]
+
+---
+# Exercise 3!
+.pull-left[
+1. Recreate the plot below and style this to your liking (e.g. change colour palette, theme, etc.).
+Take a look at the documentation of the `theme` function for inspiration by running `?theme()`
+
+```{r echo=F, fig.width=6, fig.height=5}
+penguins |> 
+  group_by(species, island, sex) |>
+  tally() |> 
+  ggplot(aes(x = species, y = n, fill = sex)) +
+  geom_col() +
+  labs(x = "Species", y= "Number of penguins") +
+  theme_bw()
+```
+]
+.pull-right[
+<ol start="2">
+2. Create a scatterplot of bill length vs body mass, colour the points by species and add a regression line to the plot
+</ol>
+<ol start="3">
+3. Now remove the regression line, but colour the points by the flipper_length_mm column
+</ol>
+]
+---
+# Multiple panels
+Let's investigate whether the average weight of penguins has changed over the three year period our dataset spans, and how this varies by species and island. How can I make a plot to investigate this?
+
+.pull-left[
+First, let's calculate the average body mass of penguins by year, species and island
+```{r warning = F, message = F}
+df <- group_by(penguins, year, species, island) |> 
+  summarise(Mean_body_mass=mean(body_mass_g))
+
+head(df, n = 3)
+```
+]
+--
+.pull-right[
+Incorporating the island through `facet_wrap`
+```{r fig.height=3, fig.width=7, fig.align='center', warning=F}
+ggplot(df, aes(x = year, y = Mean_body_mass, 
+               colour = species)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~island) +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+]
+---
+# Even more panels
+.pull-left[
+We know that weight likely varies by sex, this is currently not accounted for in the earlier plot. How can I incorporate this?
+
+```{r fig.height=3, fig.width=7, fig.align='center', warning=F, message=F}
+df2 <- group_by(penguins, year, species, 
+                island, sex) |> 
+  filter(!is.na(sex)) |> 
+  summarise(Mean_body_mass=mean(body_mass_g))
+
+head(df2, n = 4)
+```
+]
+--
+.pull-right[
+Option 1
+```{r fig.height=4, fig.width=7, fig.align='center', warning=F, message=F}
+ggplot(df2, aes(x = year, y = Mean_body_mass, 
+                colour = species)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~island+sex) +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+]
+---
+# Even more panels: facet_grid
+```{r fig.height=4, fig.width=10, fig.align='center', warning=F, message=F}
+ggplot(df2, aes(x = year, y = Mean_body_mass, colour = species)) +
+  geom_point() +
+  geom_line() +
+  facet_grid(sex~island) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+---
 # Long vs wide data format
 
 <img src="https://www.statology.org/wp-content/uploads/2021/12/wideLong1-1-768x543.png" width="706" height="500"
@@ -113,11 +623,76 @@ style="display:block;margin-left:auto;margin-right:auto"/>
 
 Source: https://www.statology.org
 ---
+# Long vs wide data format
+.pull-left[
+This is the first dataframe we plotted, is this wide or long?
+```{r}
+head(df2, n = 2)
+```
+The alternative would be a wide format, we might want this if we want to correlate the average weight of e.g. females and males
+```{r}
+library(tidyr)
+df2_wide <- pivot_wider(df2, names_from = sex, 
+                        values_from = Mean_body_mass) 
+```
+]
+--
+.pull-right[
+```{r fig.height=3, fig.width=7, fig.align='center', warning=F, message=F}
+head(df2_wide, n = 2)
 
-# Pivot wider & pivot longer
+ggplot(df2_wide, aes(x = female, y = male)) +
+  geom_point() + geom_smooth(method = 'lm')
+```
+]
+---
+
+# Saving plots & patchwork
+.pull-left[
+There are several plotting functions in R:
+- `pdf()`: saves a pdf
+- `png()`: saves a png
+
+All of them need to be closed with `dev.off()`. For example:
+```
+my_plot <- ggplot(df2_wide, aes(x = female, y = male)) +
+  geom_point() + geom_smooth(method = 'lm')
+
+pdf("my-saved-plot.pdf", height = 3, width = 7)
+  my_plot
+dev.off()
+```
+
+Or I can plot multiple plots in the same pdf using
+```
+pdf("my-saved-plot.pdf", height = 3, width = 7)
+  my_plot
+  my_plot
+dev.off()
+```
+]
+
+--
+
+Alternatively, we can combine plots using the patchwork package:
+```{r echo=F}
+my_plot <- ggplot(df2_wide, aes(x = female, y = male)) +
+  geom_point() + geom_smooth(method = 'lm')
+```
+
+```{r fig.height=2, message=F}
+library(patchwork)
+my_plot | my_plot # stack plots vertically
+my_plot / my_plot # stack plots horizontally
+```
 
 ---
 
-# ggplot
+# Getting help
+
+### 1. Use the `?` operator to bring up the help page in RStudio e.g. `?geom_point`
+### 2. Google the exact error you are getting 
+### 3. Ask ChatGPT: simple copy your code + error and ask it what's wrong with it and how to fix it
+
 
 

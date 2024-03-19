@@ -1,23 +1,24 @@
 <!DOCTYPE html>
 <html lang="" xml:lang="">
   <head>
-    <title>UHN ggplot workshop</title>
+    <title>UHN plotting workshop</title>
     <meta charset="utf-8" />
     <meta name="author" content="Michael Geuenich" />
-    <script src="libs/header-attrs/header-attrs.js"></script>
-    <link href="libs/remark-css/default.css" rel="stylesheet" />
-    <link href="libs/remark-css/metropolis.css" rel="stylesheet" />
-    <link href="libs/remark-css/tamu-fonts.css" rel="stylesheet" />
+    <script src="libs/header-attrs-2.26/header-attrs.js"></script>
+    <link href="libs/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link href="libs/remark-css-0.0.1/metropolis.css" rel="stylesheet" />
+    <link href="libs/remark-css-0.0.1/tamu-fonts.css" rel="stylesheet" />
+    <link rel="stylesheet" href="custom.css" type="text/css" />
   </head>
   <body>
     <textarea id="source">
 class: center, middle, inverse, title-slide
 
 .title[
-# UHN ggplot workshop
+# UHN plotting workshop
 ]
 .subtitle[
-## test
+## ggplot &amp; the tidyverse
 ]
 .author[
 ### Michael Geuenich
@@ -26,40 +27,75 @@ class: center, middle, inverse, title-slide
 ### Lunenfeld Tanenbaum Research Institute
 ]
 .date[
-### 2016/12/12
+### 2024/03/19
 ]
 
 ---
 
 
+# Workshop outline
+- Basic data types
+- Reading data into R
+- Subsetting and cleaning data with dplyr
+- Working with time
+- Palmer penguins
+- Plotting in base R
+- Why ggplot seems harder but is actually easier
+- ggplot details
+- Combining and saving plots
+
+
+---
 # Data types
 
-### Vectors: 
+.pull-left[
+## Vectors: 
 - basic building blocks of R
 
-```
+
+```r
 test_vector &lt;- c(1, 2, 3, 4, 5)
-test_character_vector &lt;- c("a", "b", "c", "d", "e")
+test_character_vector &lt;- c("a", "b", "c", "d")
 ```
 
+- Vectors can also be named:
+
+```r
+names(test_vector) &lt;- c("one", "two", "three", 
+                        "four", "five")
+test_vector
+```
+
+```
+##   one   two three  four  five 
+##     1     2     3     4     5
+```
+]
 --
-
-### Lists: 
-- recursive vectors, a vector that can contain other vectors
-
-```
-test_list &lt;- list(1, c(2, 3, 5), 3, 4, 5)
-```
-
-### Dataframes/tibbles
+.pull-right[
+## Dataframes/tibbles:
 - essentially tables
 
-```
+
+```r
 library(tibble)
-df &lt;- tibble(x = 1:5,
-             y = c("a", "b", "c", "d", "e")
-)
+df &lt;- tibble(
+  x = 1:5, 
+  y = c("a", "b", "c", "d", "e"))
+df
 ```
+
+```
+## # A tibble: 5 × 2
+##       x y    
+##   &lt;int&gt; &lt;chr&gt;
+## 1     1 a    
+## 2     2 b    
+## 3     3 c    
+## 4     4 d    
+## 5     5 e
+```
+]
 ---
 
 # Reading in data
@@ -71,13 +107,14 @@ The `readr` R package is your friend here. Lots of functions that are useful:
 - `read_xlsx()`: excel files, can specify what sheet to read in
 
 --
+
 Useful cheatsheet: [https://readr.tidyverse.org](https://readr.tidyverse.org)
 --
 
 
 ## Cleaning up column names
 
-Column names of data that is read in is frequently messy, e.g. `age.at death` instead of `age_at_death`. The janitor R package can help with this. Install it using
+Column names can frequently be messy, e.g. `age.at death` instead of `age_at_death`. The janitor R package can help with this. Install it using
 ```
 install.packages("janitor")
 
@@ -87,10 +124,42 @@ df &lt;- clean_names(df)
 - Check the janitor documentation for many other useful functions!
 ---
 
+# Subsetting &amp; manipulating data 
 
+Subsetting data is a common task in R. The `dplyr` package can help with this. Some useful functions:
+- `filter()`: filter rows based on some condition
+- `select()`: select columns
+    - can be used with `starts_with()`, `ends_with()`, `contains()`, `matches()`, `one_of()`, `everything()`
+- `mutate()`: add new columns
+- `arrange()`: sort rows
+- `group_by()`: group by a variable (frequently followed by other functions like `summarize()` or `tally()`)
+
+--
+
+## Piping data
+.pull-left[
+I may want to apply multiple of these functions to the same data in succession.
+I could either do this in a nested fashion, but this is very hard to read:
+```
+mutate(filter(select(df, x, y), x &gt; 2), z = x + y)
+```
+]
+--
+.pull-right[
+Alternatively, I can pipe the data using the `|&gt;` operator (`command + shift + m` in RStudio):
+```
+df |&gt; 
+  select(x, y) |&gt; 
+  filter(x &gt; 2) |&gt; 
+  mutate(z = x + y)
+```
+]
+
+---
 # Dealing with dates
 
 Dates are a common data type that can be a pain to work with as there are many formats. The `lubridate` package can help with this. Some functions to parse date-times:
+.pull-left[
 
 ```r
 library(lubridate)
@@ -112,27 +181,23 @@ day(date)
 ## [1] 15
 ```
 
----
+Extract the weekday:
 
-# Dealing with dates (cont'd)
+```r
+wday(date, label = TRUE)
+```
+
+```
+## [1] Thu
+## Levels: Sun &lt; Mon &lt; Tue &lt; Wed &lt; Thu &lt; Fri &lt; Sat
+```
+]
+--
+.pull-right[
 To overwrite the date column in a dataframe with the formated date I can thus do:
 
 ```r
-library(tibble)
 df &lt;- tibble(date = c("20201215", "20201216"))
-df
-```
-
-```
-## # A tibble: 2 × 1
-##   date    
-##   &lt;chr&gt;   
-## 1 20201215
-## 2 20201216
-```
---
-
-```r
 df$date &lt;- ymd(df$date)
 df
 ```
@@ -144,13 +209,675 @@ df
 ## 1 2020-12-15
 ## 2 2020-12-16
 ```
+]
 
 ---
+# Excel time
+.pull-left[
+Time is stored as serial numbers. Time starts on January 0th 1900 at time 00:00:00 
+- To convert from excel time to a readable time use the `convertToDateTime()` function
+- remember to add the tz argument to specify the timezone
 
-# Subsetting data 
+```r
+time &lt;- convertToDateTime(44239.5, 
+                          tz='Canada/Eastern')
+time
+```
 
+```
+## [1] "2021-02-12 12:00:00 EST"
+```
+
+We can get the year, month, day using `as.Date()`
+
+```r
+as.Date(time)
+```
+
+```
+## [1] "2021-02-12"
+```
+]
+--
+.pull-right[
+We can calculate the time between two times by substracting one from the other
+
+```r
+time1 &lt;- convertToDateTime(45336.5, 
+                           tz='Canada/Eastern')
+time2 &lt;- convertToDateTime(44239.5, 
+                           tz='Canada/Eastern')
+
+time1 - time2
+```
+
+```
+## Time difference of 1097 days
+```
+]
 ---
 
+# Sample dataset: palmer penguins
+
+.pull-left[
+
+Penguin data collected from the palmer station in Antarctica.
+
+```
+install.packages("palmerpenguins")
+```
+
+
+```r
+library(palmerpenguins)
+head(penguins, n = 6)
+```
+
+```
+## # A tibble: 6 × 8
+##   species island    bill_length_mm bill_depth_mm flipper_length_mm body_mass_g sex     year
+##   &lt;fct&gt;   &lt;fct&gt;              &lt;dbl&gt;         &lt;dbl&gt;             &lt;int&gt;       &lt;int&gt; &lt;fct&gt;  &lt;int&gt;
+## 1 Adelie  Torgersen           39.1          18.7               181        3750 male    2007
+## 2 Adelie  Torgersen           39.5          17.4               186        3800 female  2007
+## 3 Adelie  Torgersen           40.3          18                 195        3250 female  2007
+## 4 Adelie  Torgersen           NA            NA                  NA          NA &lt;NA&gt;    2007
+## 5 Adelie  Torgersen           36.7          19.3               193        3450 female  2007
+## 6 Adelie  Torgersen           39.3          20.6               190        3650 male    2007
+```
+]
+.pull-right[
+  &lt;img src="images/lter_penguins.png" width="418" height="250" 
+  style="display:block;margin-left:auto;margin-right:auto"/&gt;
+]
+---
+# Select
+.pull-left-small[
+  ## Select
+  
+  ```r
+  library(dplyr)
+  select(penguins, species, island) |&gt; 
+    head(n = 4)
+  ```
+  
+  ```
+  ## # A tibble: 4 × 2
+  ##   species island   
+  ##   &lt;fct&gt;   &lt;fct&gt;    
+  ## 1 Adelie  Torgersen
+  ## 2 Adelie  Torgersen
+  ## 3 Adelie  Torgersen
+  ## 4 Adelie  Torgersen
+  ```
+]
+--
+.pull-right-big[
+  ## Using `starts_with()`
+  
+  ```r
+  select(penguins, species, island, starts_with("bill")) |&gt; 
+    head(n = 4)
+  ```
+  
+  ```
+  ## # A tibble: 4 × 4
+  ##   species island    bill_length_mm bill_depth_mm
+  ##   &lt;fct&gt;   &lt;fct&gt;              &lt;dbl&gt;         &lt;dbl&gt;
+  ## 1 Adelie  Torgersen           39.1          18.7
+  ## 2 Adelie  Torgersen           39.5          17.4
+  ## 3 Adelie  Torgersen           40.3          18  
+  ## 4 Adelie  Torgersen           NA            NA
+  ```
+
+Instead of `starts_with()` I could also use `ends_with()`, `contains()`, `matches()`, `one_of()`, `everything()`, etc.
+]
+---
+# Filter rows
+
+```r
+filter(penguins, island == "Torgersen") |&gt; head(n = 4)
+```
+
+```
+## # A tibble: 4 × 8
+##   species island    bill_length_mm bill_depth_mm flipper_length_mm body_mass_g sex     year
+##   &lt;fct&gt;   &lt;fct&gt;              &lt;dbl&gt;         &lt;dbl&gt;             &lt;int&gt;       &lt;int&gt; &lt;fct&gt;  &lt;int&gt;
+## 1 Adelie  Torgersen           39.1          18.7               181        3750 male    2007
+## 2 Adelie  Torgersen           39.5          17.4               186        3800 female  2007
+## 3 Adelie  Torgersen           40.3          18                 195        3250 female  2007
+## 4 Adelie  Torgersen           NA            NA                  NA          NA &lt;NA&gt;    2007
+```
+--
+.pull-left-55-inverse[
+Filtering out missing values (NA's)
+
+```r
+select(penguins, species, island, sex) |&gt; 
+  filter(!is.na(sex)) |&gt; head(n = 2)
+```
+
+```
+## # A tibble: 2 × 3
+##   species island    sex   
+##   &lt;fct&gt;   &lt;fct&gt;     &lt;fct&gt; 
+## 1 Adelie  Torgersen male  
+## 2 Adelie  Torgersen female
+```
+]
+--
+.pull-right-55[
+Combining conditions with `&amp;` (and) or `|` (or) is easy.
+
+```r
+select(penguins, species, island, sex) |&gt; 
+  filter(island == "Torgersen" &amp; !is.na(sex)) |&gt; head(n = 2)
+```
+
+```
+## # A tibble: 2 × 3
+##   species island    sex   
+##   &lt;fct&gt;   &lt;fct&gt;     &lt;fct&gt; 
+## 1 Adelie  Torgersen male  
+## 2 Adelie  Torgersen female
+```
+]
+---
+
+# Mutate: adding new columns or changing existing columns
+.pull-left-55-inverse[
+
+```r
+mutate(penguins, 
+       bill_length_log = log(bill_length_mm)) |&gt; 
+  select(bill_length_mm, bill_length_log)
+```
+
+```
+## # A tibble: 344 × 2
+##    bill_length_mm bill_length_log
+##             &lt;dbl&gt;           &lt;dbl&gt;
+##  1           39.1            3.67
+##  2           39.5            3.68
+##  3           40.3            3.70
+##  4           NA             NA   
+##  5           36.7            3.60
+##  6           39.3            3.67
+##  7           38.9            3.66
+##  8           39.2            3.67
+##  9           34.1            3.53
+## 10           42              3.74
+## # ℹ 334 more rows
+```
+]
+--
+.pull-right-55[
+Let's impute those missing values in `bill_length_mm` with the mean value:
+
+```r
+mutate(penguins, bill_length_mm = 
+    case_when(
+      is.na(bill_length_mm) ~ mean(bill_length_mm, na.rm = TRUE),
+      TRUE ~ bill_length_mm
+)) |&gt; select(bill_length_mm) |&gt; head(n = 4)
+```
+
+```
+## # A tibble: 4 × 1
+##   bill_length_mm
+##            &lt;dbl&gt;
+## 1           39.1
+## 2           39.5
+## 3           40.3
+## 4           43.9
+```
+
+```r
+mean(penguins$bill_length_mm, na.rm = TRUE)
+```
+
+```
+## [1] 43.92193
+```
+]
+---
+# Cleaning up messy data with mutate
+
+.pull-left-55-inverse[
+
+```r
+crazy_df
+```
+
+```
+## # A tibble: 6 × 4
+##   accession diagnosis     accession.date
+##   &lt;chr&gt;     &lt;chr&gt;                  &lt;dbl&gt;
+## 1 S24-1014  "1.  Duodenu…         45300.
+## 2 S24-1020  "1. Stomach …         45300.
+## 3 S24-1036  "1. Skin, wi…         45300.
+## 4 S24-1054  "1. Soft tis…         45300.
+## 5 S24-1062  "1. Skin (LE…         45300.
+## 6 S24-1133  "1.  Stomach…         45300.
+## # ℹ 1 more variable: signout.date &lt;dbl&gt;
+```
+
+Introducing `grepl`: used for pattern matching
+
+```r
+grepl("Skin", crazy_df$diagnosis)
+```
+
+```
+## [1] FALSE FALSE  TRUE FALSE  TRUE FALSE
+```
+]
+--
+
+.pull-right-55[
+
+```r
+mutate(head(crazy_df, n = 3), 
+       organ = case_when(grepl("lymph.*biop", diagnosis) ~ "HP",
+                         grepl("Skin|nail", diagnosis) ~ "SK"))
+```
+
+```
+## # A tibble: 3 × 5
+##   accession diagnosis accession.date signout.date organ
+##   &lt;chr&gt;     &lt;chr&gt;              &lt;dbl&gt;        &lt;dbl&gt; &lt;chr&gt;
+## 1 S24-1014  "1.  Duo…         45300.       45302. HP   
+## 2 S24-1020  "1. Stom…         45300.       45304. HP   
+## 3 S24-1036  "1. Skin…         45300.       45309. SK
+```
+
+
+```r
+mutate(crazy_df, across(ends_with("date"), ~ 
+    convertToDateTime(.x, tz='Canada/Eastern'))) |&gt; 
+  select(-diagnosis) |&gt; head(n = 2)
+```
+
+```
+## # A tibble: 2 × 3
+##   accession accession.date      signout.date       
+##   &lt;chr&gt;     &lt;dttm&gt;              &lt;dttm&gt;             
+## 1 S24-1014  2024-01-08 13:50:36 2024-01-11 09:34:38
+## 2 S24-1020  2024-01-08 14:00:09 2024-01-12 13:59:40
+```
+]
+---
+# Group by
+.pull-left[
+Say I want to know how many penguins of each species are on each island:
+
+```r
+penguins |&gt; 
+  group_by(species, island) |&gt; 
+  tally()
+```
+
+```
+## # A tibble: 5 × 3
+## # Groups:   species [3]
+##   species   island        n
+##   &lt;fct&gt;     &lt;fct&gt;     &lt;int&gt;
+## 1 Adelie    Biscoe       44
+## 2 Adelie    Dream        56
+## 3 Adelie    Torgersen    52
+## 4 Chinstrap Dream        68
+## 5 Gentoo    Biscoe      124
+```
+]
+--
+.pull-right[
+Or I want to know the average bill and flipper length of each species:
+
+```r
+penguins |&gt; 
+  group_by(species) |&gt; 
+  summarize(mean_bill_length = 
+              mean(bill_length_mm, na.rm = TRUE),
+            mean_flipper_length =
+              mean(flipper_length_mm, na.rm = TRUE))
+```
+
+```
+## # A tibble: 3 × 3
+##   species   mean_bill_length mean_flipper_length
+##   &lt;fct&gt;                &lt;dbl&gt;               &lt;dbl&gt;
+## 1 Adelie                38.8                190.
+## 2 Chinstrap             48.8                196.
+## 3 Gentoo                47.5                217.
+```
+]
+
+---
+# Exercise 1!
+Try answering some of the following questions?
+1. Do any of the islands have an imbalance in the number of male/female penguins?
+  - Calculate the number of male and female penguins on each island
+  - See if you can calculate the proportion of female penguins on each island
+2. What is the average body mass of each species?
+3. What is the average body mass of each species on each island?
+4. Impute the missing values for the `body_mass_g` column in a species and sex specific manner (you will need `group_by` and `mutate` for this)
+
+.pull-right[
+  &lt;img src="images/lter_penguins.png"
+  style="display:block;margin-left:auto;margin-right:auto"/&gt;
+]
+
+---
+# Plotting: base R vs ggplot
+.pull-left[
+
+```r
+plot(x = penguins$bill_length_mm, 
+     y = penguins$bill_depth_mm, 
+     col = penguins$species)
+```
+
+![](index_files/figure-html/unnamed-chunk-28-1.png)&lt;!-- --&gt;
+]
+--
+.pull-right[
+
+```r
+library(ggplot2)
+ggplot(penguins, 
+       aes(x = bill_length_mm, y = bill_depth_mm, 
+           color = species)) +
+  geom_point()
+```
+
+![](index_files/figure-html/unnamed-chunk-29-1.png)&lt;!-- --&gt;
+]
+---
+# Adding regression lines
+Let's say I want to add a regression line for each species to the plot. In base R I would do:
+
+```r
+plot(x = penguins$bill_length_mm, y = penguins$bill_depth_mm, col = penguins$species)
+abline(lm(bill_depth_mm ~ bill_length_mm, data = penguins[penguins$species == "Adelie", ]), col = "red")
+abline(lm(bill_depth_mm ~ bill_length_mm, data = penguins[penguins$species == "Chinstrap", ]), col = "green")
+abline(lm(bill_depth_mm ~ bill_length_mm, data = penguins[penguins$species == "Gentoo", ]), col = "blue")
+```
+
+&lt;img src="index_files/figure-html/unnamed-chunk-30-1.png" style="display: block; margin: auto;" /&gt;
+---
+# The benefit of ggplot
+.pull-left[
+Several issues with the base R approach:
+1. I need to manually add a line for each species
+2. I need to subset the penguins dataframe for each species (e.g. `penguins[penguins$species == "Gentoo", ]`)
+3. I need to manually make sure my colours match, notice the discrepancy in point and regression line colours
+4. I need to manually add a figure legend
+]
+--
+.pull-right[
+## Using ggplot
+
+```r
+ggplot(penguins, 
+       aes(x = bill_length_mm, y = bill_depth_mm, 
+           color = species)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+![](index_files/figure-html/unnamed-chunk-31-1.png)&lt;!-- --&gt;
+]
+---
+# Some more advantages
+.pull-left-55-inverse[
+Lets say I actually wanted to know the difference in bill depth by species, I can modify our earlier code
+```
+ggplot(penguins, 
+  aes(x = bill_length_mm, y = bill_depth_mm,
+      color = species)) +
+  geom_point()
+```
+]
+--
+.pull-right-55[
+and set `x = species` and replace `geom_point()` with `geom_boxplot()`:
+
+```r
+ggplot(penguins, aes(x = species, y = bill_depth_mm)) +
+  geom_boxplot()
+```
+
+![](index_files/figure-html/unnamed-chunk-32-1.png)&lt;!-- --&gt;
+]
+--
+.pull-right-55[
+In base R I would have had to start over with `boxplot(bill_depth_mm ~ species, data = penguins)`
+]
+---
+# What is ggplot anyways?
+.pull-left-small[
+### *gg stands for Grammar of Graphics*
+- It is a way of thinking about how to build plots
+- The idea is that you can build up a plot in layers, adding points, lines, labels, etc. as you go
+- This makes it very easy to build complex plots.
+]
+--
+.pull-right-big[
+&lt;img src="https://miro.medium.com/v2/resize:fit:720/format:webp/1*UNk936MYU2BiGWpf01Ovvw.png" width="700" height="318"
+style="display:block;margin-left:auto;margin-right:auto"/&gt;
+]
+---
+# What is ggplot anyways?
+.pull-left[
+&lt;img src="https://miro.medium.com/v2/resize:fit:720/format:webp/1*UNk936MYU2BiGWpf01Ovvw.png" width="700" height="318"
+style="display:block;margin-left:auto;margin-right:auto"/&gt;
+]
+.pull-right[
+### Data
+- this is the data you want to plot
+
+### Aesthetics
+- this is how you want to map your data to the plot.
+  - what variable do you want on the x- or y-axis
+  - what variable do you want to use to colour the points, etc.
+
+### Geometries
+- this is the type of plot you want to make
+  - points, lines, bars, boxplot, etc.
+]
+---
+# Exercise 2!
+
+Try answering some of the following questions:
+1. What is the relationship between bill length and body mass?
+  - Try plotting a scatterplot of bill length vs body mass
+  - Try adding a regression line to the plot
+  - How does this relationship differ by species?
+2. Create a boxplot showing the difference in bill length by sex for each species (i.e. put species on the x-axis and bill length on the y-axis, and colour the plot by sex)
+3. Create a barplot showing the number of penguins on each island (you will need the `group_by` and `tally` functions for this)
+
+???
+penguins |&gt; 
+  group_by(species) |&gt;
+  tally() |&gt; 
+  ggplot(aes(x = species, y = n)) +
+  geom_col()
+---
+# Making things pretty
+```
+p &lt;- ggplot(penguins, aes(x = species, y = bill_length_mm, fill = sex)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Bill length by species", x = "Species", y = "Bill length (mm)", fill = "Sex (m/f)")
+  
+p
+```
+.pull-left-55-inverse[
+&lt;img src="index_files/figure-html/unnamed-chunk-33-1.png" style="display: block; margin: auto auto auto 0;" /&gt;
+]
+.pull-right-55[.move-h2-up[
+## Themes
+- The default theme in ggplot has the grey background, there are many other options including `theme_minimal()`, `theme_bw()` etc. You can find a full list [here](https://ggplot2.tidyverse.org/reference/ggtheme.html) 
+- You can also modify individual elements of the plot using `theme()`, this function has 90+ arguments that allow you to override every aspect of the plot. E.g. the following will remove the x-ticks, angle the x-axis labels and move the legend to the bottom:
+```
+p + theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+      axis.ticks.x = element_blank(), 
+      legend.position = "bottom")
+```
+]
+]
+---
+# Changing colours
+I don't really like the colour palette in the previous plot. Let's manually change this, several ways of doing this:
+.one_third[
+Manually specifying the colours:
+
+```r
+my_cols &lt;- c("female" = "blue", 
+             "male" = "red")
+p + scale_fill_manual(
+  values = my_cols
+  )
+```
+
+![](index_files/figure-html/unnamed-chunk-34-1.png)&lt;!-- --&gt;
+]
+--
+.one_third[
+Using the `viridis` package:
+
+```r
+library(viridis)
+p + scale_fill_viridis_d()
+```
+
+![](index_files/figure-html/unnamed-chunk-35-1.png)&lt;!-- --&gt;
+]
+--
+.one_third[
+Using the `RColorBrewer` package:
+
+```r
+library(RColorBrewer)
+p + scale_fill_brewer(
+  palette = "Set3"
+  )
+```
+
+![](index_files/figure-html/unnamed-chunk-36-1.png)&lt;!-- --&gt;
+
+There are lots of palettes for RColorBrewer, see [here](https://r-graph-gallery.com/38-rcolorbrewers-palettes.html)
+]
+
+---
+# Exercise 3!
+.pull-left[
+1. Recreate the plot below and style this to your liking (e.g. change colour palette, theme, etc.).
+Take a look at the documentation of the `theme` function for inspiration by running `?theme()`
+
+![](index_files/figure-html/unnamed-chunk-37-1.png)&lt;!-- --&gt;
+]
+.pull-right[
+&lt;ol start="2"&gt;
+2. Create a scatterplot of bill length vs body mass, colour the points by species and add a regression line to the plot
+&lt;/ol&gt;
+&lt;ol start="3"&gt;
+3. Now remove the regression line, but colour the points by the flipper_length_mm column
+&lt;/ol&gt;
+]
+---
+# Multiple panels
+Let's investigate whether the average weight of penguins has changed over the three year period our dataset spans, and how this varies by species and island. How can I make a plot to investigate this?
+
+.pull-left[
+First, let's calculate the average body mass of penguins by year, species and island
+
+```r
+df &lt;- group_by(penguins, year, species, island) |&gt; 
+  summarise(Mean_body_mass=mean(body_mass_g))
+
+head(df, n = 3)
+```
+
+```
+## # A tibble: 3 × 4
+## # Groups:   year, species [1]
+##    year species island    Mean_body_mass
+##   &lt;int&gt; &lt;fct&gt;   &lt;fct&gt;              &lt;dbl&gt;
+## 1  2007 Adelie  Biscoe             3620 
+## 2  2007 Adelie  Dream              3671.
+## 3  2007 Adelie  Torgersen            NA
+```
+]
+--
+.pull-right[
+Incorporating the island through `facet_wrap`
+
+```r
+ggplot(df, aes(x = year, y = Mean_body_mass, 
+               colour = species)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~island) +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+
+&lt;img src="index_files/figure-html/unnamed-chunk-39-1.png" style="display: block; margin: auto;" /&gt;
+]
+---
+# Even more panels
+.pull-left[
+We know that weight likely varies by sex, this is currently not accounted for in the earlier plot. How can I incorporate this?
+
+
+```r
+df2 &lt;- group_by(penguins, year, species, 
+                island, sex) |&gt; 
+  filter(!is.na(sex)) |&gt; 
+  summarise(Mean_body_mass=mean(body_mass_g))
+
+head(df2, n = 4)
+```
+
+```
+## # A tibble: 4 × 5
+## # Groups:   year, species, island [2]
+##    year species island sex    Mean_body_mass
+##   &lt;int&gt; &lt;fct&gt;   &lt;fct&gt;  &lt;fct&gt;           &lt;dbl&gt;
+## 1  2007 Adelie  Biscoe female          3470 
+## 2  2007 Adelie  Biscoe male            3770 
+## 3  2007 Adelie  Dream  female          3269.
+## 4  2007 Adelie  Dream  male            4102.
+```
+]
+--
+.pull-right[
+Option 1
+
+```r
+ggplot(df2, aes(x = year, y = Mean_body_mass, 
+                colour = species)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~island+sex) +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+
+&lt;img src="index_files/figure-html/unnamed-chunk-41-1.png" style="display: block; margin: auto;" /&gt;
+]
+---
+# Even more panels: facet_grid
+
+```r
+ggplot(df2, aes(x = year, y = Mean_body_mass, colour = species)) +
+  geom_point() +
+  geom_line() +
+  facet_grid(sex~island) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+
+&lt;img src="index_files/figure-html/unnamed-chunk-42-1.png" style="display: block; margin: auto;" /&gt;
+---
 # Long vs wide data format
 
 &lt;img src="https://www.statology.org/wp-content/uploads/2021/12/wideLong1-1-768x543.png" width="706" height="500"
@@ -158,12 +885,114 @@ style="display:block;margin-left:auto;margin-right:auto"/&gt;
 
 Source: https://www.statology.org
 ---
+# Long vs wide data format
+.pull-left[
+This is the first dataframe we plotted, is this wide or long?
+
+```r
+head(df2, n = 2)
+```
+
+```
+## # A tibble: 2 × 5
+## # Groups:   year, species, island [1]
+##    year species island sex    Mean_body_mass
+##   &lt;int&gt; &lt;fct&gt;   &lt;fct&gt;  &lt;fct&gt;           &lt;dbl&gt;
+## 1  2007 Adelie  Biscoe female           3470
+## 2  2007 Adelie  Biscoe male             3770
+```
+The alternative would be a wide format, we might want this if we want to correlate the average weight of e.g. females and males
+
+```r
+library(tidyr)
+df2_wide &lt;- pivot_wider(df2, names_from = sex, 
+                        values_from = Mean_body_mass) 
+```
+]
+--
+.pull-right[
+
+```r
+head(df2_wide, n = 2)
+```
+
+```
+## # A tibble: 2 × 5
+## # Groups:   year, species, island [2]
+##    year species island female  male
+##   &lt;int&gt; &lt;fct&gt;   &lt;fct&gt;   &lt;dbl&gt; &lt;dbl&gt;
+## 1  2007 Adelie  Biscoe  3470  3770 
+## 2  2007 Adelie  Dream   3269. 4102.
+```
+
+```r
+ggplot(df2_wide, aes(x = female, y = male)) +
+  geom_point() + geom_smooth(method = 'lm')
+```
+
+&lt;img src="index_files/figure-html/unnamed-chunk-45-1.png" style="display: block; margin: auto;" /&gt;
+]
+---
+
+# Saving plots &amp; patchwork
+.pull-left[
+There are several plotting functions in R:
+- `pdf()`: saves a pdf
+- `png()`: saves a png
+
+All of them need to be closed with `dev.off()`. For example:
+```
+my_plot &lt;- ggplot(df2_wide, aes(x = female, y = male)) +
+  geom_point() + geom_smooth(method = 'lm')
+
+pdf("my-saved-plot.pdf", height = 3, width = 7)
+  my_plot
+dev.off()
+```
+
+Or I can plot multiple plots in the same pdf using
+```
+pdf("my-saved-plot.pdf", height = 3, width = 7)
+  my_plot
+  my_plot
+dev.off()
+```
+]
+
+--
+
+Alternatively, we can combine plots using the patchwork package:
+
+
+
+```r
+library(patchwork)
+my_plot | my_plot # stack plots vertically
+```
+
+![](index_files/figure-html/unnamed-chunk-47-1.png)&lt;!-- --&gt;
+
+```r
+my_plot / my_plot # stack plots horizontally
+```
+
+![](index_files/figure-html/unnamed-chunk-47-2.png)&lt;!-- --&gt;
+
+---
+
+# Getting help
+
+### 1. Use the `?` operator to bring up the help page in RStudio e.g. `?geom_point`
+### 2. Google the exact error you are getting 
+### 3. Ask ChatGPT: simple copy your code + error and ask it what's wrong with it and how to fix it
+
+
 
     </textarea>
 <style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
 <script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
 <script>var slideshow = remark.create({
-"ratio": "16:10",
+"ratio": "17:10",
 "highlightStyle": "github",
 "highlightLines": true,
 "countIncrementalSlides": false
